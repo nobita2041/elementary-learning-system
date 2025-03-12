@@ -1,6 +1,6 @@
-# 小学校6年生向け教科横断型学習システム
+# 教科横断型学習システム
 
-小学校6年生向けの教科横断型問題解決をサポートするAIシステムです。様々な教科の視点から質問に回答します。
+教科横断型問題解決をサポートするAIシステムです。様々な教科の視点から質問に回答します。
 
 ## 特徴
 
@@ -14,8 +14,8 @@
 
 1. リポジトリをクローン
 ```bash
-git clone https://github.com/yourusername/elementary-learning-system.git
-cd elementary-learning-system
+git clone https://github.com/yourusername/cross-subject-learning-system.git
+cd cross-subject-learning-system
 ```
 
 2. 仮想環境のセットアップ
