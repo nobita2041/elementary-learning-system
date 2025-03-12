@@ -3,6 +3,7 @@ import asyncio
 import os
 from typing import List, Dict, Tuple
 from agents import Agent, Runner
+import time
 
 # タイトルとヘッダーの設定
 st.set_page_config(page_title="教科横断型学習システム", page_icon="📚")
@@ -228,6 +229,46 @@ async def select_relevant_agents(question: str) -> List[Agent]:
     # 常に3つのエージェントを返す
     return selected_agents[:3]
 
+async def process_question_streaming(question: str, placeholder):
+    """
+    生徒からの質問を処理し、ストリーミングで回答を表示します
+    """
+    # 関連する教科エージェントを選択
+    relevant_agents = await select_relevant_agents(question)
+    
+    # 各エージェントからの回答を収集
+    responses = []
+    agent_names = []
+    
+    # 教科別の先生を紹介するコメント
+    intro = f"この質問には、{', '.join([AGENT_JAPANESE_NAMES.get(agent.name, agent.name) for agent in relevant_agents])}に聞いてみました！それぞれの先生からの回答です。\n\n"
+    placeholder.markdown(intro)
+    
+    for agent in relevant_agents:
+        agent_name = AGENT_JAPANESE_NAMES.get(agent.name, agent.name)
+        agent_names.append(agent_name)
+        
+        # 先生の名前を表示
+        placeholder.markdown(f"# {agent_name}からの回答\n回答を生成中...")
+        
+        # エージェントからの回答を取得
+        result = await Runner.run(agent, input=question)
+        
+        # 回答を段階的に表示（文字単位でアニメーション効果）
+        response_text = result.final_output
+        displayed_text = ""
+        
+        for char in response_text:
+            displayed_text += char
+            placeholder.markdown(f"# {agent_name}からの回答\n{displayed_text}")
+            time.sleep(0.01)  # 表示速度の調整
+        
+        responses.append(f"# {agent_name}からの回答\n{result.final_output}")
+    
+    # 総合的な回答の生成
+    final_response = intro + "\n\n".join(responses)
+    return final_response
+
 async def process_question(question: str) -> str:
     """
     生徒からの質問を処理し、3つの教科の視点から総合的な回答を生成します
@@ -268,6 +309,9 @@ api_key = st.sidebar.text_input("OpenAI APIキー", type="password")
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
 
+# ストリーミングモードの切り替え
+streaming_mode = st.sidebar.checkbox("ストリーミングモード", value=True, help="回答をリアルタイムで表示します")
+
 # サイドバーにサンプル質問を表示
 st.sidebar.title("サンプル質問")
 for q in sample_questions:
@@ -282,6 +326,9 @@ if "answer" not in st.session_state:
 
 question = st.text_input("質問を入力してください", value=st.session_state.question)
 
+# 回答表示用のプレースホルダー
+answer_placeholder = st.empty()
+
 # 質問送信ボタン
 if st.button("質問する"):
     if not api_key:
@@ -289,23 +336,38 @@ if st.button("質問する"):
     elif not question:
         st.warning("質問を入力してください")
     else:
-        with st.spinner("先生たちが考えています..."):
-            # 非同期関数を実行するためのヘルパー関数
-            async def get_answer():
-                return await process_question(question)
-            
-            # 非同期関数を実行
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            answer = loop.run_until_complete(get_answer())
-            loop.close()
-            
-            st.session_state.answer = answer
-
-# 回答の表示
-if st.session_state.answer:
-    st.markdown("## 回答")
-    st.markdown(st.session_state.answer)
+        # 回答をリセット
+        st.session_state.answer = ""
+        
+        if streaming_mode:
+            # ストリーミングモードで回答を表示
+            with st.spinner("先生たちが考えています..."):
+                # 非同期関数を実行するためのヘルパー関数
+                async def get_streaming_answer():
+                    return await process_question_streaming(question, answer_placeholder)
+                
+                # 非同期関数を実行
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                answer = loop.run_until_complete(get_streaming_answer())
+                loop.close()
+                
+                st.session_state.answer = answer
+        else:
+            # 通常モードで回答を表示
+            with st.spinner("先生たちが考えています..."):
+                # 非同期関数を実行するためのヘルパー関数
+                async def get_answer():
+                    return await process_question(question)
+                
+                # 非同期関数を実行
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                answer = loop.run_until_complete(get_answer())
+                loop.close()
+                
+                st.session_state.answer = answer
+                answer_placeholder.markdown(answer)
 
 # フッター
 st.markdown("---")

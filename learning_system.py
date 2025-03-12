@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple
 import asyncio
 from agents import Agent, Runner
+import time
 
 # 各教科エージェントの実装
 math_agent = Agent(
@@ -230,6 +231,51 @@ async def select_relevant_agents(question: str) -> List[Agent]:
     
     # 最大3つまでに制限
     return selected_agents[:3]
+
+async def process_question_streaming(question: str, callback=None):
+    """
+    生徒からの質問を処理し、ストリーミングで回答を生成します
+    callback: 各ステップで呼び出される関数（Streamlitなどの表示用）
+    """
+    # 関連する教科エージェントを選択
+    relevant_agents = await select_relevant_agents(question)
+    
+    # 各エージェントからの回答を収集
+    responses = []
+    agent_names = []
+    
+    # 教科別の先生を紹介するコメント
+    intro = f"この質問には、{', '.join([agent.name.replace(' Teacher', '先生') for agent in relevant_agents])}に聞いてみました！それぞれの先生からの回答です。\n\n"
+    
+    if callback:
+        callback(intro)
+    
+    for agent in relevant_agents:
+        agent_name = agent.name.replace(" Teacher", "先生")
+        agent_names.append(agent_name)
+        
+        # 先生の名前を表示
+        if callback:
+            callback(f"# {agent_name}からの回答\n回答を生成中...")
+        
+        # エージェントからの回答を取得
+        result = await Runner.run(agent, input=question)
+        
+        # 回答を段階的に表示（文字単位でアニメーション効果）
+        if callback:
+            response_text = result.final_output
+            displayed_text = ""
+            
+            for char in response_text:
+                displayed_text += char
+                callback(f"# {agent_name}からの回答\n{displayed_text}")
+                time.sleep(0.01)  # 表示速度の調整
+        
+        responses.append(f"# {agent_name}からの回答\n{result.final_output}")
+    
+    # 総合的な回答の生成
+    final_response = intro + "\n\n".join(responses)
+    return final_response
 
 async def process_question(question: str) -> str:
     """
