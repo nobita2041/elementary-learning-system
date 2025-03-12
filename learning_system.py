@@ -246,7 +246,7 @@ async def process_question(question: str) -> str:
         result = await Runner.run(agent, input=question)
         agent_name = agent.name.replace(" Teacher", "先生")
         agent_names.append(agent_name)
-        responses.append(f"【{agent_name}からの回答】\n{result.final_output}")
+        responses.append(f"# {agent_name}からの回答\n{result.final_output}")
     
     # 教科別の先生を紹介するコメント
     intro = f"この質問には、{', '.join(agent_names)}に聞いてみました！それぞれの先生からの回答です。\n\n"
