@@ -188,7 +188,7 @@ AGENT_JAPANESE_NAMES = {
 
 async def select_relevant_agents(question: str) -> List[Agent]:
     """
-    質問に関連する2〜3つの教科エージェントを選択します
+    質問に関連する3つの教科エージェントを選択します
     """
     # 各エージェントのスコアを計算
     agent_scores = []
@@ -202,28 +202,35 @@ async def select_relevant_agents(question: str) -> List[Agent]:
     # スコアが高い順にエージェントをソート
     sorted_agents = sorted(agent_scores, key=lambda x: x[1], reverse=True)
     
-    # スコアが0の場合は、デフォルトで社会、理科を選択
-    if all(score == 0 for _, score in sorted_agents):
-        return [social_agent, science_agent]
+    # 上位のエージェントを選択（スコアが0より大きいもののみ）
+    selected_agents = [agent for agent, score in sorted_agents if score > 0]
     
-    # 上位2〜3つのエージェントを選択（スコアが0より大きいもののみ）
-    selected_agents = [agent for agent, score in sorted_agents if score > 0][:3]
-    
-    # 選択されたエージェントが1つ以下の場合、デフォルトのエージェントを追加
-    if len(selected_agents) < 2:
+    # 選択されたエージェントが3つ未満の場合、デフォルトのエージェントを追加
+    if len(selected_agents) < 3:
+        # スコアが0のエージェントも含めて上位から選択
+        all_agents = [agent for agent, _ in sorted_agents]
+        
+        # すでに選択されているエージェント以外から追加
+        for agent in all_agents:
+            if agent not in selected_agents:
+                selected_agents.append(agent)
+                if len(selected_agents) >= 3:
+                    break
+        
+        # それでも3つに満たない場合（通常はここには来ないはず）
         default_agents = [social_agent, science_agent, language_agent]
         for agent in default_agents:
             if agent not in selected_agents:
                 selected_agents.append(agent)
-                if len(selected_agents) >= 2:
+                if len(selected_agents) >= 3:
                     break
     
-    # 最大3つまでに制限
+    # 常に3つのエージェントを返す
     return selected_agents[:3]
 
 async def process_question(question: str) -> str:
     """
-    生徒からの質問を処理し、総合的な回答を生成します
+    生徒からの質問を処理し、3つの教科の視点から総合的な回答を生成します
     """
     # 関連する教科エージェントを選択
     relevant_agents = await select_relevant_agents(question)
