@@ -1,0 +1,4 @@
+openai-agents==0.0.3
+openai==1.66.2
+streamlit==1.43.2
+asyncio==3.4.3 
